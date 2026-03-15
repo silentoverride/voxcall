@@ -1,5 +1,6 @@
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
+main
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -42,6 +43,7 @@ android {
 kotlin {
     compilerOptions {
         jvmTarget.set(JvmTarget.JVM_17)
+
     }
 }
 

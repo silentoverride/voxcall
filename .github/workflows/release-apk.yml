@@ -21,6 +21,7 @@ jobs:
 
       - name: Set up JDK 17
         uses: actions/setup-java@v5
+
         with:
           distribution: temurin
           java-version: '17'
@@ -77,6 +78,7 @@ jobs:
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v5
+
         with:
           name: voxcall-release-apk
           path: app/build/outputs/apk/release/voxcall-release.apk
