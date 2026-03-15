@@ -36,6 +36,19 @@ jobs:
       - name: Build release APK
         run: gradle :app:assembleRelease
 
+      - name: Validate signing secrets
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${KEYSTORE_BASE64:-}" || -z "${KEYSTORE_PASSWORD:-}" || -z "${KEY_ALIAS:-}" || -z "${KEY_PASSWORD:-}" ]]; then
+            echo "Missing Android signing secrets. Configure ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD." >&2
+            exit 1
+          fi
+
       - name: Align and sign APK
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -48,23 +61,7 @@ jobs:
           APK_ALIGNED="app/build/outputs/apk/release/app-release-aligned.apk"
           APK_SIGNED="app/build/outputs/apk/release/voxcall-release.apk"
 
-          if [[ -n "${KEYSTORE_BASE64:-}" && -n "${KEYSTORE_PASSWORD:-}" && -n "${KEY_ALIAS:-}" && -n "${KEY_PASSWORD:-}" ]]; then
-            echo "$KEYSTORE_BASE64" | base64 --decode > release.keystore
-          else
-            echo "Signing secrets not configured. Generating temporary keystore for this build."
-            keytool -genkeypair \
-              -keystore release.keystore \
-              -storepass android \
-              -alias voxcall \
-              -keypass android \
-              -dname "CN=VoxCall, OU=Release, O=VoxCall, L=Unknown, S=Unknown, C=US" \
-              -keyalg RSA \
-              -keysize 2048 \
-              -validity 3650
-            KEYSTORE_PASSWORD=android
-            KEY_ALIAS=voxcall
-            KEY_PASSWORD=android
-          fi
+          echo "$KEYSTORE_BASE64" | base64 --decode > release.keystore
 
           "$ANDROID_HOME"/build-tools/34.0.0/zipalign -p -f 4 "$APK_UNSIGNED" "$APK_ALIGNED"
           "$ANDROID_HOME"/build-tools/34.0.0/apksigner sign \

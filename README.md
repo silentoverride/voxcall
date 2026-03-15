@@ -53,12 +53,12 @@ This repo includes `.github/workflows/release-apk.yml`.
 - Push a tag like `v1.0.0` to trigger a release build and publish `voxcall-release.apk` on the GitHub Releases page.
 - You can also run the workflow manually from the **Actions** tab (`workflow_dispatch`).
 
-### Recommended signing setup (optional, but best for stable updates)
-Add these repository secrets so release APKs are always signed with the same key:
+### Required signing setup (for installable updates)
+Add these repository secrets. The release workflow now fails fast when these are missing to prevent publishing APKs signed with a different key:
 
 - `ANDROID_KEYSTORE_BASE64` (base64-encoded keystore file)
 - `ANDROID_KEYSTORE_PASSWORD`
 - `ANDROID_KEY_ALIAS`
 - `ANDROID_KEY_PASSWORD`
 
-If secrets are not set, the workflow generates a temporary keystore and still publishes an installable APK, but updates across versions may require uninstall/reinstall because the signing key changes.
+This guarantees every published release APK is signed with your stable keystore so users can update without uninstalling.
