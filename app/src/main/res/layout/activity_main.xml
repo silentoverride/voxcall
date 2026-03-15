@@ -60,16 +60,36 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@id/genderSpinner" />
 
+    <Spinner
+        android:id="@+id/languageSpinner"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:entries="@array/language_options"
+        app:layout_constraintEnd_toStartOf="@id/dialectSpinner"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/genderSpinner" />
+
+    <Spinner
+        android:id="@+id/dialectSpinner"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:entries="@array/dialect_options"
+        app:layout_constraintBaseline_toBaselineOf="@id/languageSpinner"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/languageSpinner" />
+
     <CheckBox
         android:id="@+id/autoSelectCheck"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"
         android:checked="true"
-        android:text="Auto-select closest ElevenLabs voice by gender + age"
+        android:text="Auto-select closest voice by gender + age + language + dialect"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/genderSpinner" />
+        app:layout_constraintTop_toBottomOf="@id/languageSpinner" />
 
     <Button
         android:id="@+id/startButton"

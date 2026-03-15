@@ -39,6 +39,8 @@ class MainActivity : AppCompatActivity() {
         val voiceIdInput = findViewById<EditText>(R.id.voiceIdInput)
         val genderSpinner = findViewById<Spinner>(R.id.genderSpinner)
         val ageInput = findViewById<EditText>(R.id.ageInput)
+        val languageSpinner = findViewById<Spinner>(R.id.languageSpinner)
+        val dialectSpinner = findViewById<Spinner>(R.id.dialectSpinner)
         val autoSelectCheck = findViewById<CheckBox>(R.id.autoSelectCheck)
         val statusText = findViewById<TextView>(R.id.statusText)
         val startButton = findViewById<Button>(R.id.startButton)
@@ -50,8 +52,10 @@ class MainActivity : AppCompatActivity() {
             ensureAudioPermission()
             val apiKey = apiKeyInput.text.toString().trim()
             val voiceId = voiceIdInput.text.toString().trim()
-            val preferredGender = genderSpinner.selectedItem.toString().lowercase()
+            val preferredGender = genderSpinner.selectedItem.toString().trim().lowercase()
             val preferredAge = ageInput.text.toString().toIntOrNull()
+            val preferredLanguage = languageSpinner.selectedItem.toString().trim().lowercase()
+            val preferredDialect = dialectSpinner.selectedItem.toString().trim().lowercase()
             val autoSelect = autoSelectCheck.isChecked
 
             if (apiKey.isBlank()) {
@@ -60,7 +64,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             if (!autoSelect && voiceId.isBlank()) {
-                statusText.text = "Enter a Voice ID or enable auto-select by gender/age."
+                statusText.text = "Enter a Voice ID or enable auto-select by profile traits."
                 return@setOnClickListener
             }
 
@@ -76,6 +80,8 @@ class MainActivity : AppCompatActivity() {
                     voiceId = voiceId,
                     preferredGender = preferredGender,
                     preferredAge = preferredAge,
+                    preferredLanguage = preferredLanguage,
+                    preferredDialect = preferredDialect,
                     autoSelectVoice = autoSelect
                 )
                 statusText.text = result

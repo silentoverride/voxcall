@@ -19,6 +19,7 @@ import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import org.json.JSONObject
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.abs
@@ -39,13 +40,20 @@ class ElevenLabsVoiceBridge(private val context: Context) {
         voiceId: String,
         preferredGender: String,
         preferredAge: Int,
+        preferredLanguage: String,
+        preferredDialect: String,
         autoSelectVoice: Boolean
     ): String = withContext(Dispatchers.IO) {
         if (running.get()) return@withContext "Voice transform already running."
 
         val selectedVoiceId = if (autoSelectVoice) {
-            findBestVoiceId(apiKey, preferredGender, preferredAge)
-                ?: return@withContext "No ElevenLabs voice matched gender/age preference."
+            findBestVoiceId(
+                apiKey = apiKey,
+                preferredGender = preferredGender,
+                preferredAge = preferredAge,
+                preferredLanguage = preferredLanguage,
+                preferredDialect = preferredDialect
+            ) ?: return@withContext "No ElevenLabs voice matched your gender/age/language/dialect preferences."
         } else {
             voiceId
         }
@@ -59,7 +67,10 @@ class ElevenLabsVoiceBridge(private val context: Context) {
 
         val audioManager = context.getSystemService(AudioManager::class.java)
         audioManager.mode = AudioManager.MODE_IN_COMMUNICATION
-        audioManager.isSpeakerphoneOn = true
+        @Suppress("DEPRECATION")
+        run {
+            audioManager.isSpeakerphoneOn = true
+        }
 
         audioRecord = AudioRecord(
             MediaRecorder.AudioSource.MIC,
@@ -114,7 +125,7 @@ class ElevenLabsVoiceBridge(private val context: Context) {
         }
 
         return@withContext if (autoSelectVoice) {
-            "Streaming with auto-selected voice $selectedVoiceId ($preferredGender, age $preferredAge)."
+            "Streaming with voice $selectedVoiceId ($preferredGender, age $preferredAge, $preferredLanguage/$preferredDialect)."
         } else {
             "Streaming mic input to ElevenLabs. Use speakerphone for your call."
         }
@@ -138,7 +149,13 @@ class ElevenLabsVoiceBridge(private val context: Context) {
         audioTrack = null
     }
 
-    private fun findBestVoiceId(apiKey: String, preferredGender: String, preferredAge: Int): String? {
+    private fun findBestVoiceId(
+        apiKey: String,
+        preferredGender: String,
+        preferredAge: Int,
+        preferredLanguage: String,
+        preferredDialect: String
+    ): String? {
         val client = OkHttpClient()
         val request = Request.Builder()
             .url("https://api.elevenlabs.io/v1/voices")
@@ -161,11 +178,21 @@ class ElevenLabsVoiceBridge(private val context: Context) {
         for (index in 0 until voices.length()) {
             val voice = voices.optJSONObject(index) ?: continue
             val labels = voice.optJSONObject("labels")
-            val genderLabel = labels?.optString("gender").orEmpty().lowercase()
-            val ageLabel = labels?.optString("age").orEmpty().lowercase()
+
+            val genderLabel = labels?.optString("gender").normalize()
+            val ageLabel = labels?.optString("age").normalize()
+            val languageLabel = (
+                labels?.optString("language")
+                    ?: labels?.optString("lang")
+                    ?: labels?.optString("locale")
+                ).normalize()
+            val accentLabel = (
+                labels?.optString("accent")
+                    ?: labels?.optString("dialect")
+                ).normalize()
 
             var score = 0
-            if (genderLabel == preferredGender.lowercase()) score += 3
+            if (genderLabel == preferredGender.normalize()) score += 3
 
             val ageDistance = when (ageLabel) {
                 "young" -> abs(preferredAge - 20)
@@ -175,6 +202,9 @@ class ElevenLabsVoiceBridge(private val context: Context) {
             }
             score += (30 - ageDistance).coerceAtLeast(0)
 
+            if (languageMatches(languageLabel, preferredLanguage)) score += 6
+            if (dialectMatches(accentLabel, preferredDialect)) score += 5
+
             if (score > bestScore) {
                 bestScore = score
                 bestVoiceId = voice.optString("voice_id")
@@ -182,6 +212,24 @@ class ElevenLabsVoiceBridge(private val context: Context) {
         }
 
         return bestVoiceId
+    }
+
+    private fun languageMatches(languageLabel: String, preferredLanguage: String): Boolean {
+        if (languageLabel.isBlank()) return false
+        val normalizedPreferred = preferredLanguage.normalize()
+        return languageLabel == normalizedPreferred ||
+            languageLabel.startsWith(normalizedPreferred) ||
+            normalizedPreferred.startsWith(languageLabel)
+    }
+
+    private fun dialectMatches(accentLabel: String, preferredDialect: String): Boolean {
+        if (accentLabel.isBlank()) return false
+        val normalizedPreferred = preferredDialect.normalize()
+        return accentLabel == normalizedPreferred || accentLabel.contains(normalizedPreferred)
+    }
+
+    private fun String?.normalize(): String {
+        return this.orEmpty().trim().lowercase(Locale.ROOT)
     }
 
     private inner class VoiceListener : WebSocketListener() {

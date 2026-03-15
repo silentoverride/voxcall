@@ -7,7 +7,7 @@ Android does **not** let third-party apps directly replace your microphone strea
 
 ## Features
 - Stream live mic audio to ElevenLabs speech-to-speech and hear transformed output.
-- Set preferred **gender** and **age**.
+- Set preferred **gender**, **age**, **language**, and **dialect**.
 - Auto-select the closest available ElevenLabs voice from your account voice catalog based on those traits.
 
 
@@ -25,13 +25,13 @@ export ANDROID_HOME=/opt/android-sdk
 2. Let Gradle sync.
 3. Run on a physical Android device.
 4. Paste your ElevenLabs API key.
-5. Optionally paste a specific Voice ID, or enable auto-select by gender/age.
+5. Optionally paste a specific Voice ID, or enable auto-select by gender/age/language/dialect.
 6. Start a phone call on speaker or use a VoIP app, then tap **Start relay**.
 
 ## ElevenLabs endpoints
 The app currently uses:
 
-- `GET https://api.elevenlabs.io/v1/voices` to find the closest voice for selected gender/age.
+- `GET https://api.elevenlabs.io/v1/voices` to find the closest voice for selected gender/age/language/dialect.
 - `wss://api.elevenlabs.io/v1/speech-to-speech/{voiceId}/stream` for low-latency speech relay.
 
 If ElevenLabs updates protocol requirements, adjust request payload/parsing in `ElevenLabsVoiceBridge.kt`.
