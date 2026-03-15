@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.Spinner
 import android.widget.TextView
@@ -35,16 +36,12 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         val apiKeyInput = findViewById<EditText>(R.id.apiKeyInput)
-        val voiceSearchInput = findViewById<EditText>(R.id.voiceSearchInput)
-        val languageFilterInput = findViewById<EditText>(R.id.languageFilterInput)
-        val accentFilterInput = findViewById<EditText>(R.id.accentFilterInput)
-        val conversationalSpinner = findViewById<Spinner>(R.id.conversationalSpinner)
-        val narrationSpinner = findViewById<Spinner>(R.id.narrationSpinner)
-        val charactersSpinner = findViewById<Spinner>(R.id.charactersSpinner)
-        val socialMediaSpinner = findViewById<Spinner>(R.id.socialMediaSpinner)
-        val educationalSpinner = findViewById<Spinner>(R.id.educationalSpinner)
-        val advertisementSpinner = findViewById<Spinner>(R.id.advertisementSpinner)
-        val entertainmentSpinner = findViewById<Spinner>(R.id.entertainmentSpinner)
+        val voiceIdInput = findViewById<EditText>(R.id.voiceIdInput)
+        val genderSpinner = findViewById<Spinner>(R.id.genderSpinner)
+        val ageInput = findViewById<EditText>(R.id.ageInput)
+        val languageSpinner = findViewById<Spinner>(R.id.languageSpinner)
+        val dialectSpinner = findViewById<Spinner>(R.id.dialectSpinner)
+        val autoSelectCheck = findViewById<CheckBox>(R.id.autoSelectCheck)
         val statusText = findViewById<TextView>(R.id.statusText)
         val startButton = findViewById<Button>(R.id.startButton)
         val stopButton = findViewById<Button>(R.id.stopButton)
@@ -54,33 +51,38 @@ class MainActivity : AppCompatActivity() {
         startButton.setOnClickListener {
             ensureAudioPermission()
             val apiKey = apiKeyInput.text.toString().trim()
-            val searchText = voiceSearchInput.text.toString().trim()
-            val language = languageFilterInput.text.toString().trim()
-            val accent = accentFilterInput.text.toString().trim()
+            val voiceId = voiceIdInput.text.toString().trim()
+            val preferredGender = genderSpinner.selectedItem.toString().trim().lowercase()
+            val preferredAge = ageInput.text.toString().toIntOrNull()
+            val preferredLanguage = languageSpinner.selectedItem.toString().trim().lowercase()
+            val preferredDialect = dialectSpinner.selectedItem.toString().trim().lowercase()
+            val autoSelect = autoSelectCheck.isChecked
 
             if (apiKey.isBlank()) {
                 statusText.text = "Enter ElevenLabs API key first."
                 return@setOnClickListener
             }
 
-            val filters = ElevenLabsVoiceBridge.VoiceSearchFilters(
-                searchText = searchText,
-                language = language,
-                accent = accent,
-                conversational = conversationalSpinner.selectedItem.toString() == "required",
-                narration = narrationSpinner.selectedItem.toString() == "required",
-                characters = charactersSpinner.selectedItem.toString() == "required",
-                socialMedia = socialMediaSpinner.selectedItem.toString() == "required",
-                educational = educationalSpinner.selectedItem.toString() == "required",
-                advertisement = advertisementSpinner.selectedItem.toString() == "required",
-                entertainment = entertainmentSpinner.selectedItem.toString() == "required"
-            )
+            if (!autoSelect && voiceId.isBlank()) {
+                statusText.text = "Enter a Voice ID or enable auto-select by profile traits."
+                return@setOnClickListener
+            }
+
+            if (preferredAge == null || preferredAge !in 10..100) {
+                statusText.text = "Enter a valid target age between 10 and 100."
+                return@setOnClickListener
+            }
 
             uiScope.launch {
-                statusText.text = "Looking up voices and starting live transform..."
+                statusText.text = "Starting live transform..."
                 val result = voiceBridge.start(
                     apiKey = apiKey,
-                    filters = filters
+                    voiceId = voiceId,
+                    preferredGender = preferredGender,
+                    preferredAge = preferredAge,
+                    preferredLanguage = preferredLanguage,
+                    preferredDialect = preferredDialect,
+                    autoSelectVoice = autoSelect
                 )
                 statusText.text = result
             }
