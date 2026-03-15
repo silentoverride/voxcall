@@ -1,29 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string-array name="gender_options">
-        <item>female</item>
-        <item>male</item>
-        <item>non-binary</item>
-    </string-array>
-
-    <string-array name="language_options">
-        <item>english</item>
-        <item>spanish</item>
-        <item>french</item>
-        <item>german</item>
-        <item>italian</item>
-        <item>portuguese</item>
-        <item>hindi</item>
-        <item>japanese</item>
-    </string-array>
-
-    <string-array name="dialect_options">
-        <item>american</item>
-        <item>british</item>
-        <item>australian</item>
-        <item>irish</item>
-        <item>indian</item>
-        <item>latin-american</item>
-        <item>castilian</item>
+    <string-array name="voice_filter_mode_options">
+        <item>any</item>
+        <item>required</item>
     </string-array>
 </resources>

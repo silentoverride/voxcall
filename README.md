@@ -11,7 +11,6 @@ Android does **not** let third-party apps directly replace your microphone strea
 - Filter by **language**, **accent**, and usage categories: **conversational**, **narration**, **characters**, **social media**, **educational**, **advertisement**, and **entertainment**.
 
 
-
 ## Environment setup (this container)
 To install Android SDK components used by this project in this environment:
 
@@ -33,7 +32,6 @@ export ANDROID_HOME=/opt/android-sdk
 The app currently uses:
 
 - `GET https://api.elevenlabs.io/v1/voices` to search and score voices by lookup text, language, accent, and usage-category filters.
-
 - `wss://api.elevenlabs.io/v1/speech-to-speech/{voiceId}/stream` for low-latency speech relay.
 
 If ElevenLabs updates protocol requirements, adjust request payload/parsing in `ElevenLabsVoiceBridge.kt`.

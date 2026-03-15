@@ -22,9 +22,21 @@ import org.json.JSONObject
 import java.util.Locale
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
-import kotlin.math.abs
 
 class ElevenLabsVoiceBridge(private val context: Context) {
+    data class VoiceSearchFilters(
+        val searchText: String,
+        val language: String,
+        val accent: String,
+        val conversational: Boolean,
+        val narration: Boolean,
+        val characters: Boolean,
+        val socialMedia: Boolean,
+        val educational: Boolean,
+        val advertisement: Boolean,
+        val entertainment: Boolean
+    )
+
     private val sampleRate = 16_000
     private val channelConfig = AudioFormat.CHANNEL_IN_MONO
     private val encoding = AudioFormat.ENCODING_PCM_16BIT
@@ -37,29 +49,18 @@ class ElevenLabsVoiceBridge(private val context: Context) {
 
     suspend fun start(
         apiKey: String,
-        voiceId: String,
-        preferredGender: String,
-        preferredAge: Int,
-        preferredLanguage: String,
-        preferredDialect: String,
-        autoSelectVoice: Boolean
+        filters: VoiceSearchFilters
     ): String = withContext(Dispatchers.IO) {
         if (running.get()) return@withContext "Voice transform already running."
 
-        val selectedVoiceId = if (autoSelectVoice) {
-            findBestVoiceId(
-                apiKey = apiKey,
-                preferredGender = preferredGender,
-                preferredAge = preferredAge,
-                preferredLanguage = preferredLanguage,
-                preferredDialect = preferredDialect
-            ) ?: return@withContext "No ElevenLabs voice matched your gender/age/language/dialect preferences."
-        } else {
-            voiceId
-        }
+        val selectedVoice = findBestVoice(apiKey = apiKey, filters = filters)
+            ?: return@withContext "No ElevenLabs voice matched your lookup filters."
+
+        val selectedVoiceId = selectedVoice.optString("voice_id")
+        val selectedVoiceName = selectedVoice.optString("name").ifBlank { selectedVoiceId }
 
         if (selectedVoiceId.isBlank()) {
-            return@withContext "Enter a Voice ID or enable auto-select."
+            return@withContext "No valid voice ID returned by ElevenLabs."
         }
 
         val bufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, encoding)
@@ -124,11 +125,7 @@ class ElevenLabsVoiceBridge(private val context: Context) {
             }
         }
 
-        return@withContext if (autoSelectVoice) {
-            "Streaming with voice $selectedVoiceId ($preferredGender, age $preferredAge, $preferredLanguage/$preferredDialect)."
-        } else {
-            "Streaming mic input to ElevenLabs. Use speakerphone for your call."
-        }
+        "Streaming with voice: $selectedVoiceName ($selectedVoiceId)."
     }
 
     fun stop() {
@@ -149,13 +146,7 @@ class ElevenLabsVoiceBridge(private val context: Context) {
         audioTrack = null
     }
 
-    private fun findBestVoiceId(
-        apiKey: String,
-        preferredGender: String,
-        preferredAge: Int,
-        preferredLanguage: String,
-        preferredDialect: String
-    ): String? {
+    private fun findBestVoice(apiKey: String, filters: VoiceSearchFilters): JSONObject? {
         val client = OkHttpClient()
         val request = Request.Builder()
             .url("https://api.elevenlabs.io/v1/voices")
@@ -172,60 +163,84 @@ class ElevenLabsVoiceBridge(private val context: Context) {
         response.close()
 
         val voices = runCatching { JSONObject(json).optJSONArray("voices") }.getOrNull() ?: return null
-        var bestVoiceId: String? = null
+
+        var bestVoice: JSONObject? = null
         var bestScore = Int.MIN_VALUE
 
         for (index in 0 until voices.length()) {
             val voice = voices.optJSONObject(index) ?: continue
-            val labels = voice.optJSONObject("labels")
-
-            val genderLabel = labels?.optString("gender").normalize()
-            val ageLabel = labels?.optString("age").normalize()
-            val languageLabel = (
-                labels?.optString("language")
-                    ?: labels?.optString("lang")
-                    ?: labels?.optString("locale")
-                ).normalize()
-            val accentLabel = (
-                labels?.optString("accent")
-                    ?: labels?.optString("dialect")
-                ).normalize()
-
-            var score = 0
-            if (genderLabel == preferredGender.normalize()) score += 3
-
-            val ageDistance = when (ageLabel) {
-                "young" -> abs(preferredAge - 20)
-                "middle_aged" -> abs(preferredAge - 40)
-                "old" -> abs(preferredAge - 65)
-                else -> 25
-            }
-            score += (30 - ageDistance).coerceAtLeast(0)
-
-            if (languageMatches(languageLabel, preferredLanguage)) score += 6
-            if (dialectMatches(accentLabel, preferredDialect)) score += 5
-
+            val score = scoreVoice(voice, filters)
             if (score > bestScore) {
                 bestScore = score
-                bestVoiceId = voice.optString("voice_id")
+                bestVoice = voice
             }
         }
 
-        return bestVoiceId
+        return if (bestScore >= 0) bestVoice else null
     }
 
-    private fun languageMatches(languageLabel: String, preferredLanguage: String): Boolean {
-        if (languageLabel.isBlank()) return false
-        val normalizedPreferred = preferredLanguage.normalize()
-        return languageLabel == normalizedPreferred ||
-            languageLabel.startsWith(normalizedPreferred) ||
-            normalizedPreferred.startsWith(languageLabel)
+    private fun scoreVoice(voice: JSONObject, filters: VoiceSearchFilters): Int {
+        val labels = voice.optJSONObject("labels")
+        val languageLabel = (
+            labels?.optString("language")
+                ?: labels?.optString("lang")
+                ?: labels?.optString("locale")
+            ).normalize()
+        val accentLabel = (
+            labels?.optString("accent")
+                ?: labels?.optString("dialect")
+            ).normalize()
+
+        val searchableBlob = buildString {
+            append(voice.optString("name"))
+            append(' ')
+            append(voice.optString("description"))
+            append(' ')
+            append(voice.optString("category"))
+            append(' ')
+            if (labels != null) append(labels.toString())
+        }.normalize()
+
+        var score = 0
+        val normalizedSearchText = filters.searchText.normalize()
+        if (normalizedSearchText.isNotBlank()) {
+            if (!searchableBlob.contains(normalizedSearchText)) return -1
+            score += 12
+        }
+
+        val normalizedLanguage = filters.language.normalize()
+        if (normalizedLanguage.isNotBlank()) {
+            if (!languageLabel.contains(normalizedLanguage) && !searchableBlob.contains(normalizedLanguage)) return -1
+            score += 8
+        }
+
+        val normalizedAccent = filters.accent.normalize()
+        if (normalizedAccent.isNotBlank()) {
+            if (!accentLabel.contains(normalizedAccent) && !searchableBlob.contains(normalizedAccent)) return -1
+            score += 8
+        }
+
+        if (filters.conversational && !containsAny(searchableBlob, listOf("conversational", "conversation", "chat"))) return -1
+        if (filters.narration && !containsAny(searchableBlob, listOf("narration", "narrator", "audiobook", "story"))) return -1
+        if (filters.characters && !containsAny(searchableBlob, listOf("character", "characters", "roleplay", "cartoon", "anime"))) return -1
+        if (filters.socialMedia && !containsAny(searchableBlob, listOf("social media", "tiktok", "youtube", "instagram", "short form"))) return -1
+        if (filters.educational && !containsAny(searchableBlob, listOf("education", "educational", "training", "explainer", "teacher"))) return -1
+        if (filters.advertisement && !containsAny(searchableBlob, listOf("advertisement", "ad", "promo", "commercial", "marketing"))) return -1
+        if (filters.entertainment && !containsAny(searchableBlob, listOf("entertainment", "gaming", "fun", "podcast", "streamer"))) return -1
+
+        if (filters.conversational) score += 4
+        if (filters.narration) score += 4
+        if (filters.characters) score += 4
+        if (filters.socialMedia) score += 4
+        if (filters.educational) score += 4
+        if (filters.advertisement) score += 4
+        if (filters.entertainment) score += 4
+
+        return score
     }
 
-    private fun dialectMatches(accentLabel: String, preferredDialect: String): Boolean {
-        if (accentLabel.isBlank()) return false
-        val normalizedPreferred = preferredDialect.normalize()
-        return accentLabel == normalizedPreferred || accentLabel.contains(normalizedPreferred)
+    private fun containsAny(text: String, keywords: List<String>): Boolean {
+        return keywords.any { text.contains(it.normalize()) }
     }
 
     private fun String?.normalize(): String {
