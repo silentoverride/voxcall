@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SDK_ROOT="${ANDROID_SDK_ROOT:-/opt/android-sdk}"
-CMDLINE_VERSION="11076708"
+CMDLINE_VERSION="14742923"
 CMDLINE_ZIP="commandlinetools-linux-${CMDLINE_VERSION}_latest.zip"
 CMDLINE_URL="https://dl.google.com/android/repository/${CMDLINE_ZIP}"
 TMP_DIR="$(mktemp -d)"
@@ -14,7 +14,15 @@ trap cleanup EXIT
 
 mkdir -p "$SDK_ROOT/cmdline-tools"
 
-if [[ ! -x "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]]; then
+# Clean up stale side-by-side directories that cause sdkmanager location warnings
+rm -rf "$SDK_ROOT"/cmdline-tools/latest-* "$SDK_ROOT"/build-tools/*-2 "$SDK_ROOT"/build-tools/*-3 2>/dev/null || true
+
+installed_version=""
+if [[ -f "$SDK_ROOT/cmdline-tools/latest/source.properties" ]]; then
+  installed_version="$(awk -F'= ' '/Pkg.Revision/ {print $2}' "$SDK_ROOT/cmdline-tools/latest/source.properties" || true)"
+fi
+
+if [[ "$installed_version" != "$CMDLINE_VERSION" ]]; then
   echo "Downloading Android command-line tools..."
   curl -fsSL "$CMDLINE_URL" -o "$TMP_DIR/$CMDLINE_ZIP"
   unzip -q "$TMP_DIR/$CMDLINE_ZIP" -d "$TMP_DIR"

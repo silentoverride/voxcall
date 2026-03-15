@@ -34,7 +34,7 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Build release APK
-        run: gradle :app:assembleRelease
+        run: gradle :app:assembleRelease --warning-mode=none
 
       - name: Check signing secret availability
         id: signing
@@ -49,6 +49,10 @@ jobs:
             echo "available=true" >> "$GITHUB_OUTPUT"
           else
             echo "available=false" >> "$GITHUB_OUTPUT"
+            if [[ "${GITHUB_REF:-}" == refs/tags/v* ]]; then
+              echo "Tag builds must be signed. Configure ANDROID_KEYSTORE_BASE64, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD." >&2
+              exit 1
+            fi
             echo "Signing secrets are missing. Uploading unsigned APK artifact only; release publication will be skipped."
           fi
 

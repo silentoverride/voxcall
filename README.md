@@ -61,5 +61,6 @@ Add these repository secrets so release APKs are signed with a stable key:
 - `ANDROID_KEY_ALIAS`
 - `ANDROID_KEY_PASSWORD`
 
-If secrets are missing, the workflow still succeeds and uploads `app-release-unsigned.apk` as a workflow artifact, but it skips GitHub Release publishing.
+If secrets are missing on non-tag runs, the workflow still succeeds and uploads `app-release-unsigned.apk` as a workflow artifact.
+For tag builds (`v*`), signing secrets are required and the workflow fails if they are missing, ensuring published releases are always signed.
 To support in-place updates for users, configure secrets so `voxcall-release.apk` is signed with your persistent keystore.
