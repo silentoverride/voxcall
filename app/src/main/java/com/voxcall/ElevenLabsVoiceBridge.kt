@@ -24,6 +24,23 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 
 class ElevenLabsVoiceBridge(private val context: Context) {
+    data class VoiceOption(
+        val id: String,
+        val name: String,
+        val language: String,
+        val accent: String
+    ) {
+        val displayName: String
+            get() = if (language.isBlank() && accent.isBlank()) {
+                name
+            } else {
+                "$name (${listOf(language, accent).filter { it.isNotBlank() }.joinToString(", ")})"
+            }
+
+        val searchableText: String
+            get() = "$name $language $accent".normalize()
+    }
+
     data class VoiceSearchFilters(
         val searchText: String,
         val language: String,
@@ -146,7 +163,33 @@ class ElevenLabsVoiceBridge(private val context: Context) {
         audioTrack = null
     }
 
-    private fun findBestVoice(apiKey: String, filters: VoiceSearchFilters): JSONObject? {
+    suspend fun fetchVoiceOptions(apiKey: String): List<VoiceOption> = withContext(Dispatchers.IO) {
+        val voices = fetchVoices(apiKey) ?: return@withContext emptyList()
+
+        buildList {
+            for (index in 0 until voices.length()) {
+                val voice = voices.optJSONObject(index) ?: continue
+                val labels = voice.optJSONObject("labels")
+                val language = (
+                    labels?.optString("language")
+                        ?: labels?.optString("lang")
+                        ?: labels?.optString("locale")
+                    ).orEmpty().trim()
+                val accent = (
+                    labels?.optString("accent")
+                        ?: labels?.optString("dialect")
+                    ).orEmpty().trim()
+                val name = voice.optString("name").trim()
+                val id = voice.optString("voice_id").trim()
+
+                if (name.isBlank() || id.isBlank()) continue
+
+                add(VoiceOption(id = id, name = name, language = language, accent = accent))
+            }
+        }.sortedBy { it.name.lowercase(Locale.ROOT) }
+    }
+
+    private fun fetchVoices(apiKey: String): org.json.JSONArray? {
         val client = OkHttpClient()
         val request = Request.Builder()
             .url("https://api.elevenlabs.io/v1/voices")
@@ -162,7 +205,11 @@ class ElevenLabsVoiceBridge(private val context: Context) {
         val json = response.body?.string().orEmpty()
         response.close()
 
-        val voices = runCatching { JSONObject(json).optJSONArray("voices") }.getOrNull() ?: return null
+        return runCatching { JSONObject(json).optJSONArray("voices") }.getOrNull()
+    }
+
+    private fun findBestVoice(apiKey: String, filters: VoiceSearchFilters): JSONObject? {
+        val voices = fetchVoices(apiKey) ?: return null
 
         var bestVoice: JSONObject? = null
         var bestScore = Int.MIN_VALUE

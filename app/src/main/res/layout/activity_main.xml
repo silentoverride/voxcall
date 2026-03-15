@@ -31,7 +31,7 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/titleText" />
 
-        <EditText
+        <AutoCompleteTextView
             android:id="@+id/voiceSearchInput"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -40,9 +40,9 @@
             android:inputType="text"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/apiKeyInput" />
+            app:layout_constraintTop_toBottomOf="@id/languageFilterInput" />
 
-        <EditText
+        <AutoCompleteTextView
             android:id="@+id/languageFilterInput"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -51,9 +51,9 @@
             android:inputType="text"
             app:layout_constraintEnd_toStartOf="@id/accentFilterInput"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/voiceSearchInput" />
+            app:layout_constraintTop_toBottomOf="@id/apiKeyInput" />
 
-        <EditText
+        <AutoCompleteTextView
             android:id="@+id/accentFilterInput"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -73,7 +73,7 @@
             android:textStyle="bold"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@id/languageFilterInput" />
+            app:layout_constraintTop_toBottomOf="@id/voiceSearchInput" />
 
         <Spinner
             android:id="@+id/conversationalSpinner"
