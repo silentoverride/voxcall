@@ -34,7 +34,7 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Build release APK
-        run: gradle :app:assembleRelease
+        run: gradle :app:assembleRelease --warning-mode=none
 
       - name: Check signing secret availability
         id: signing
