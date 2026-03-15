@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="voice_filter_mode_options">
+        <item>any</item>
+        <item>required</item>
+    </string-array>
+</resources>
