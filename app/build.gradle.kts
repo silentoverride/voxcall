@@ -17,6 +17,15 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("release.keystore")
+            storePassword = "password"
+            keyAlias = "voxcall"
+            keyPassword = "password"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -24,6 +33,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("release")
         }
     }
 
@@ -32,8 +42,10 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions {
-        jvmTarget = "17"
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
     }
 
     lint {
@@ -41,6 +53,23 @@ android {
     }
 }
 
+tasks.register<Exec>("generateKeystore") {
+    val keystoreFile = file("release.keystore")
+    onlyIf { !keystoreFile.exists() }
+
+    commandLine(
+        "keytool", "-genkey", "-v",
+        "-keystore", keystoreFile.absolutePath,
+        "-alias", "voxcall",
+        "-keyalg", "RSA",
+        "-keysize", "2048",
+        "-validity", "10000",
+        "-dname", "CN=VoxCall, OU=Dev, O=VoxCall, L=Unknown, S=Unknown, C=US",
+        "-storepass", "password",
+        "-keypass", "password",
+        "-noprompt"
+    )
+}
 
 dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
